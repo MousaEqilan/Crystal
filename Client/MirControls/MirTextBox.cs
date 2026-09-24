@@ -418,13 +418,13 @@ namespace Client.MirControls
 
         private void TextBoxOnKeyDown(object sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.CapsLock || e.KeyCode == Keys.Capital)
+            if ((e.KeyCode == Keys.CapsLock || e.KeyCode == Keys.Capital) && MirScene.ActiveScene is Client.MirScenes.LoginScene)
                 e.Handled = true;
         }
 
         private void TextBoxOnKeyUp(object sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.CapsLock || e.KeyCode == Keys.Capital)
+            if ((e.KeyCode == Keys.CapsLock || e.KeyCode == Keys.Capital) && MirScene.ActiveScene is Client.MirScenes.LoginScene)
             {
                 e.Handled = true;
                 return;

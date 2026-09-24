@@ -68,7 +68,6 @@ namespace Client
             MouseWheel += CMain_MouseWheel;
 
             Application.AddMessageFilter(new CapsLockFilter());
-            InstallCapsLockHook();
 
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.Selectable, true);
             FormBorderStyle = Settings.FullScreen || Settings.Borderless ? FormBorderStyle.None : FormBorderStyle.FixedDialog;
@@ -137,9 +136,14 @@ namespace Client
             SpellTargetLock = false;
         }
 
+        private static bool IsLoginSceneActive()
+        {
+            return MirScene.ActiveScene is Client.MirScenes.LoginScene;
+        }
+
         public static void CMain_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.CapsLock || e.KeyCode == Keys.Capital)
+            if ((e.KeyCode == Keys.CapsLock || e.KeyCode == Keys.Capital) && IsLoginSceneActive())
             {
                 e.Handled = true;
                 return;
@@ -757,7 +761,8 @@ namespace Client
             public bool PreFilterMessage(ref Message m)
             {
                 if ((m.Msg == WM_KEYDOWN || m.Msg == WM_KEYUP || m.Msg == WM_SYSKEYDOWN || m.Msg == WM_SYSKEYUP)
-                    && m.WParam.ToInt32() == VK_CAPITAL)
+                    && m.WParam.ToInt32() == VK_CAPITAL
+                    && MirScene.ActiveScene is Client.MirScenes.LoginScene)
                 {
                     return true;
                 }
@@ -780,10 +785,13 @@ namespace Client
         [DllImport("user32.dll")]
         private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
 
+        [DllImport("user32.dll")]
+        private static extern short GetKeyState(int nVirtKey);
+
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern IntPtr GetModuleHandle(string lpModuleName);
 
-        private static void InstallCapsLockHook()
+        public static void InstallCapsLockHook()
         {
             try
             {
@@ -802,7 +810,7 @@ namespace Client
             }
         }
 
-        private static void UninstallCapsLockHook()
+        public static void UninstallCapsLockHook()
         {
             try
             {
@@ -818,11 +826,21 @@ namespace Client
 
         private static IntPtr CapsLockHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
-            if (nCode >= 0)
+            if (nCode >= 0 && MirScene.ActiveScene is Client.MirScenes.LoginScene)
             {
                 int vkCode = Marshal.ReadInt32(lParam);
                 if (vkCode == VK_CAPITAL)
-                    return (IntPtr)1;
+                {
+                    const int WM_KEYDOWN = 0x100;
+                    const int WM_SYSKEYDOWN = 0x104;
+                    int msg = wParam.ToInt32();
+                    if (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN)
+                    {
+                        bool capsOn = (GetKeyState(VK_CAPITAL) & 0x0001) != 0;
+                        if (!capsOn)
+                            return (IntPtr)1;
+                    }
+                }
             }
 
             return CallNextHookEx(_capsLockHook, nCode, wParam, lParam);
